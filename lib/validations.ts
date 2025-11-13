@@ -2,10 +2,6 @@ import { z } from 'zod'
 
 // Zod schema for creating a new option position
 export const createOptionPositionSchema = z.object({
-  // Wheel cycle tracking
-  wheelCycleName: z.string().optional(),
-  continueExistingWheel: z.boolean().default(false),
-
   // Required fields
   openDate: z.string().min(1, 'Open date is required').or(z.date()),
   stockTicker: z
@@ -46,10 +42,6 @@ export const createOptionPositionSchema = z.object({
 
 // For form inputs (allows string numbers that will be coerced)
 export const createOptionPositionFormSchema = z.object({
-  // Wheel cycle tracking
-  wheelCycleName: z.string().optional(),
-  continueExistingWheel: z.string().transform((val) => val === 'yes'),
-
   // Required fields
   openDate: z.string().min(1, 'Open date is required'),
   stockTicker: z

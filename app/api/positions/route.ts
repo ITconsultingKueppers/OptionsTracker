@@ -55,11 +55,14 @@ export async function POST(request: NextRequest) {
       closeDate,
     })
 
+    // Auto-generate wheelCycleName from stockTicker
+    const wheelCycleName = validatedData.stockTicker
+
     // Create position in database
     const position = await prisma.optionPosition.create({
       data: {
-        wheelCycleName: validatedData.wheelCycleName || null,
-        continueExistingWheel: validatedData.continueExistingWheel,
+        wheelCycleName,
+        continueExistingWheel: false, // No longer user-controlled, always false
         openDate,
         stockTicker: validatedData.stockTicker,
         expiration,

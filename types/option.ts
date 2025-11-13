@@ -94,10 +94,15 @@ export interface PositionFilters {
   status?: 'all' | OptionStatus
 }
 
-// Wheel cycle summary
-export interface WheelCycle {
+// Wheel cycle summary (from API)
+export interface WheelCycleSummary {
   name: string
-  positions: OptionPosition[]
+  totalPositions: number
+  openPositions: number
+  closedPositions: number
   totalPL: number
+  realizedPL: number
+  unrealizedPL: number
+  totalPremiumCollected: number
   status: 'active' | 'completed'
 }

@@ -15,7 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { FileText, MessageSquare, Coffee, ChevronDown, Trash2, Pencil, LayoutGrid, Table as TableIcon } from "lucide-react"
 import { toast } from "sonner"
 import { createOptionPositionFormSchema, type CreateOptionPositionFormData } from "@/lib/validations"
-import { OptionPosition, PortfolioMetrics } from "@/types/option"
+import { OptionPosition, PortfolioMetrics, WheelCycleSummary } from "@/types/option"
 import {
   Form,
   FormControl,
@@ -29,6 +29,7 @@ export default function OptionsTracker() {
   const [isROIExpanded, setIsROIExpanded] = useState(false)
   const [positions, setPositions] = useState<OptionPosition[]>([])
   const [metrics, setMetrics] = useState<PortfolioMetrics | null>(null)
+  const [wheelCycles, setWheelCycles] = useState<WheelCycleSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
 
@@ -50,8 +51,6 @@ export default function OptionsTracker() {
     mode: "onSubmit", // Only validate on submit, not on change/blur
     reValidateMode: "onChange", // After first submit, revalidate on change
     defaultValues: {
-      continueExistingWheel: "no",
-      wheelCycleName: "",
       openDate: "",
       stockTicker: "",
       expiration: "",
@@ -81,9 +80,10 @@ export default function OptionsTracker() {
       if (typeFilter !== 'all') params.append('type', typeFilter)
       if (statusFilter !== 'all') params.append('status', statusFilter)
 
-      const [positionsRes, metricsRes] = await Promise.all([
+      const [positionsRes, metricsRes, wheelCyclesRes] = await Promise.all([
         fetch(`/api/positions?${params.toString()}`),
         fetch('/api/metrics'),
+        fetch('/api/wheel-cycles'),
       ])
 
       if (positionsRes.ok) {
@@ -94,6 +94,11 @@ export default function OptionsTracker() {
       if (metricsRes.ok) {
         const metricsData = await metricsRes.json()
         setMetrics(metricsData)
+      }
+
+      if (wheelCyclesRes.ok) {
+        const wheelCyclesData = await wheelCyclesRes.json()
+        setWheelCycles(wheelCyclesData)
       }
     } catch (error) {
       console.error('Error fetching data:', error)
@@ -162,8 +167,6 @@ export default function OptionsTracker() {
 
     // Pre-fill form with position data
     form.reset({
-      continueExistingWheel: position.continueExistingWheel ? "yes" : "no",
-      wheelCycleName: position.wheelCycleName || "",
       openDate: new Date(position.openDate).toISOString().split('T')[0],
       stockTicker: position.stockTicker,
       expiration: new Date(position.expiration).toISOString().split('T')[0],
@@ -417,50 +420,6 @@ export default function OptionsTracker() {
             <CardContent>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                  {/* Wheel Cycle Tracking */}
-                  <div className="space-y-4">
-                    <div>
-                      <Label className="text-sm font-medium text-primary">Wheel Cycle Tracking</Label>
-                      <p className="text-xs text-muted-foreground mt-1">Continue Existing Wheel?</p>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="continueExistingWheel"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormControl>
-                              <Select value={field.value} onValueChange={field.onChange}>
-                                <SelectTrigger className="bg-card">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="no">No - Start new wheel cycle</SelectItem>
-                                  <SelectItem value="yes">Yes - Continue existing</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </FormControl>
-                            <p className="text-xs text-muted-foreground">Starting a new wheel cycle</p>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="wheelCycleName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormControl>
-                              <Input placeholder="Paper/Wheel" className="bg-card" {...field} />
-                            </FormControl>
-                            <p className="text-xs text-muted-foreground">Give this wheel cycle a name</p>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-
                   {/* Position Details - Row 1 */}
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <FormField
@@ -770,12 +729,15 @@ export default function OptionsTracker() {
                 </div>
               ) : (
                 <Tabs defaultValue="open" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
+                  <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="open">
                       Open Positions ({positions.filter(p => p.status === 'open' || p.status === 'assigned').length})
                     </TabsTrigger>
                     <TabsTrigger value="closed">
                       Closed Positions ({positions.filter(p => p.status === 'closed').length})
+                    </TabsTrigger>
+                    <TabsTrigger value="wheels">
+                      Wheel Cycles ({wheelCycles.length})
                     </TabsTrigger>
                   </TabsList>
 
@@ -1048,6 +1010,81 @@ export default function OptionsTracker() {
                       </div>
                     )}
                   </TabsContent>
+
+                  {/* Wheel Cycles Tab */}
+                  <TabsContent value="wheels" className="mt-4">
+                    {wheelCycles.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <p className="text-muted-foreground font-medium">No wheel cycles yet</p>
+                        <p className="text-sm text-muted-foreground/70 mt-1">Wheel cycles are automatically created for each stock ticker</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {wheelCycles.map((cycle) => (
+                          <Card key={cycle.name} className="border-2">
+                            <CardHeader className="pb-3">
+                              <div className="flex items-center justify-between">
+                                <CardTitle className="text-xl font-bold">{cycle.name}</CardTitle>
+                                <span className={`text-xs px-2 py-1 rounded capitalize ${
+                                  cycle.status === 'active'
+                                    ? 'bg-blue-500/10 text-blue-500'
+                                    : 'bg-gray-500/10 text-gray-500'
+                                }`}>
+                                  {cycle.status}
+                                </span>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                              <div>
+                                <p className="text-xs text-muted-foreground">Total P/L</p>
+                                <p className={`text-2xl font-bold ${
+                                  cycle.totalPL >= 0 ? 'text-green-500' : 'text-red-500'
+                                }`}>
+                                  {formatCurrency(cycle.totalPL)}
+                                </p>
+                              </div>
+                              <div className="grid grid-cols-2 gap-3 pt-2 border-t">
+                                <div>
+                                  <p className="text-xs text-muted-foreground">Realized</p>
+                                  <p className={`font-semibold ${
+                                    cycle.realizedPL >= 0 ? 'text-green-600' : 'text-red-600'
+                                  }`}>
+                                    {formatCurrency(cycle.realizedPL)}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-muted-foreground">Unrealized</p>
+                                  <p className={`font-semibold ${
+                                    cycle.unrealizedPL >= 0 ? 'text-green-600' : 'text-red-600'
+                                  }`}>
+                                    {formatCurrency(cycle.unrealizedPL)}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-3 pt-2 border-t">
+                                <div>
+                                  <p className="text-xs text-muted-foreground">Total Positions</p>
+                                  <p className="font-semibold">{cycle.totalPositions}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-muted-foreground">Open / Closed</p>
+                                  <p className="font-semibold text-sm">
+                                    {cycle.openPositions} / {cycle.closedPositions}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="pt-2 border-t">
+                                <p className="text-xs text-muted-foreground">Premium Collected</p>
+                                <p className="font-semibold text-green-600">
+                                  {formatCurrency(cycle.totalPremiumCollected)}
+                                </p>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </TabsContent>
                 </Tabs>
               )}
             </CardContent>
@@ -1297,43 +1334,6 @@ export default function OptionsTracker() {
                           <FormLabel>Open Fees</FormLabel>
                           <FormControl>
                             <Input type="number" step="0.01" placeholder="0.00" className="bg-card" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="wheelCycleName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Wheel Cycle Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Paper/Wheel" className="bg-card" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="continueExistingWheel"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Continue Existing Wheel?</FormLabel>
-                          <FormControl>
-                            <Select value={field.value} onValueChange={field.onChange}>
-                              <SelectTrigger className="bg-card">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="no">No - Start new wheel cycle</SelectItem>
-                                <SelectItem value="yes">Yes - Continue existing</SelectItem>
-                              </SelectContent>
-                            </Select>
                           </FormControl>
                           <FormMessage />
                         </FormItem>

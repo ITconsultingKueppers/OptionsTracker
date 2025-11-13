@@ -71,6 +71,11 @@ export async function PATCH(
       return NextResponse.json({ error: 'Position not found' }, { status: 404 })
     }
 
+    // Auto-generate wheelCycleName from stockTicker if stockTicker is being updated
+    if (updateData.stockTicker) {
+      updateData.wheelCycleName = updateData.stockTicker
+    }
+
     // Merge existing and new data for calculations
     const mergedData = {
       ...existingPosition,
