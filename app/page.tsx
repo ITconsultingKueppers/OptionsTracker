@@ -294,7 +294,10 @@ export default function OptionsTracker() {
                 <div className="text-3xl font-bold text-metric-green-text">
                   {loading ? '...' : formatCurrency(metrics?.realizedPL || 0)}
                 </div>
-                <p className="text-xs text-metric-green-text/70 mt-1">Closed positions</p>
+                <div className="text-xs text-metric-green-text/70 mt-1 space-y-0.5">
+                  <p>Premium: {loading ? '...' : formatCurrency(metrics?.premiumRealizedPL || 0)}</p>
+                  <p>Stock: {loading ? '...' : formatCurrency(metrics?.stockRealizedPL || 0)}</p>
+                </div>
               </CardContent>
             </Card>
 
@@ -306,7 +309,10 @@ export default function OptionsTracker() {
                 <div className="text-3xl font-bold text-metric-purple-text">
                   {loading ? '...' : formatCurrency(metrics?.unrealizedPL || 0)}
                 </div>
-                <p className="text-xs text-metric-purple-text/70 mt-1">Open premiums</p>
+                <div className="text-xs text-metric-purple-text/70 mt-1 space-y-0.5">
+                  <p>Premium: {loading ? '...' : formatCurrency(metrics?.premiumUnrealizedPL || 0)}</p>
+                  <p>Stock: {loading ? '...' : formatCurrency(metrics?.stockUnrealizedPL || 0)}</p>
+                </div>
               </CardContent>
             </Card>
 
@@ -526,8 +532,8 @@ export default function OptionsTracker() {
                     />
                   </div>
 
-                  {/* Position Details - Row 3 */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {/* Position Details - Row 3 - Stock Ownership */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <FormField
                       control={form.control}
                       name="premium"
@@ -572,6 +578,62 @@ export default function OptionsTracker() {
                           <FormLabel>Stock Cost Basis</FormLabel>
                           <FormControl>
                             <Input type="number" step="0.01" placeholder="0.00" className="bg-card" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="stockQuantity"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Stock Quantity</FormLabel>
+                          <FormControl>
+                            <Input type="number" step="1" placeholder="0" className="bg-card" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="stockAcquisitionDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Stock Acquisition Date</FormLabel>
+                          <FormControl>
+                            <Input type="date" className="bg-card" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Position Details - Row 3b - Stock Sale Info */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="stockSalePrice"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Stock Sale Price</FormLabel>
+                          <FormControl>
+                            <Input type="number" step="0.01" placeholder="0.00" className="bg-card" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="stockSaleDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Stock Sale Date</FormLabel>
+                          <FormControl>
+                            <Input type="date" className="bg-card" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -1254,7 +1316,7 @@ export default function OptionsTracker() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <FormField
                       control={form.control}
                       name="premium"
@@ -1297,6 +1359,64 @@ export default function OptionsTracker() {
                           <FormLabel>Stock Cost Basis</FormLabel>
                           <FormControl>
                             <Input type="number" step="0.01" placeholder="0.00" className="bg-card" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="stockQuantity"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Stock Quantity</FormLabel>
+                          <FormControl>
+                            <Input type="number" step="1" placeholder="0" className="bg-card" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="stockAcquisitionDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Stock Acquisition Date</FormLabel>
+                          <FormControl>
+                            <Input type="date" className="bg-card" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="stockSalePrice"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Stock Sale Price</FormLabel>
+                          <FormControl>
+                            <Input type="number" step="0.01" placeholder="0.00" className="bg-card" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="stockSaleDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Stock Sale Date</FormLabel>
+                          <FormControl>
+                            <Input type="date" className="bg-card" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

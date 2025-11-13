@@ -27,6 +27,10 @@ export const createOptionPositionSchema = z.object({
   // Stock ownership
   ownsStock: z.boolean().default(false),
   stockCostBasis: z.number().positive('Must be greater than 0').optional(),
+  stockQuantity: z.number().int('Must be a whole number').positive('Must be greater than 0').optional(),
+  stockAcquisitionDate: z.string().optional().or(z.date().optional()),
+  stockSalePrice: z.number().positive('Must be greater than 0').optional(),
+  stockSaleDate: z.string().optional().or(z.date().optional()),
 
   // Optional fields
   assigned: z.boolean().default(false),
@@ -144,6 +148,28 @@ export const createOptionPositionFormSchema = z.object({
       if (num <= 0) throw new Error('Must be greater than 0')
       return num
     }),
+  stockQuantity: z
+    .string()
+    .optional()
+    .transform((val) => {
+      if (!val || val === '') return undefined
+      const num = parseInt(val, 10)
+      if (isNaN(num)) throw new Error('Must be a valid number')
+      if (num <= 0) throw new Error('Must be greater than 0')
+      return num
+    }),
+  stockAcquisitionDate: z.string().optional(),
+  stockSalePrice: z
+    .string()
+    .optional()
+    .transform((val) => {
+      if (!val || val === '') return undefined
+      const num = parseFloat(val)
+      if (isNaN(num)) throw new Error('Must be a valid number')
+      if (num <= 0) throw new Error('Must be greater than 0')
+      return num
+    }),
+  stockSaleDate: z.string().optional(),
 
   // Optional fields
   assigned: z.string().transform((val) => val === 'yes'),

@@ -24,6 +24,10 @@ export interface OptionPosition {
   // Stock ownership tracking
   ownsStock: boolean
   stockCostBasis?: number | null
+  stockQuantity?: number | null
+  stockAcquisitionDate?: Date | null
+  stockSalePrice?: number | null
+  stockSaleDate?: Date | null
 
   // Status and assignment
   assigned: boolean
@@ -38,6 +42,8 @@ export interface OptionPosition {
 
   // Calculated fields
   realizedPL?: number | null
+  premiumRealizedPL?: number | null
+  stockRealizedPL?: number | null
   unrealizedPL?: number | null
 }
 
@@ -59,6 +65,10 @@ export interface CreateOptionPositionInput {
   // Stock ownership
   ownsStock: boolean
   stockCostBasis?: number
+  stockQuantity?: number
+  stockAcquisitionDate?: string | Date
+  stockSalePrice?: number
+  stockSaleDate?: string | Date
 
   // Optional fields
   assigned: boolean
@@ -80,7 +90,11 @@ export interface PortfolioMetrics {
   closedPositions: number
   assignedPositions: number
   realizedPL: number
+  premiumRealizedPL: number // Premium component of realized P/L
+  stockRealizedPL: number // Stock component of realized P/L
   unrealizedPL: number
+  premiumUnrealizedPL: number // Open option premiums
+  stockUnrealizedPL: number // Stock unrealized gains/losses
   openPremiumCollected: number // Premium from open positions
   closedPremiumCollected: number // Premium actually collected from closed positions
   totalCapitalAllocated: number // Capital at risk (strike × contracts × 100 for puts, stock value for calls)

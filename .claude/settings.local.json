@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(pnpm prisma migrate:*)"
+      "Bash(pnpm prisma migrate:*)",
+      "Bash(pnpm prisma generate:*)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm run dev)"
     ],
     "deny": [],
     "ask": []

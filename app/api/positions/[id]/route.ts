@@ -7,23 +7,44 @@ import { z } from 'zod'
 function calculatePositionMetrics(position: any) {
   let status = 'open'
   let realizedPL = null
+  let premiumRealizedPL = null
+  let stockRealizedPL = null
 
   // Determine status
   if (position.closeDate) {
     status = 'closed'
-  } else if (position.assigned) {
-    status = 'assigned'
+  } else if (position.assigned && position.ownsStock) {
+    status = 'assigned' // Has stock, might sell calls on it
   }
 
   // Calculate realized P/L for closed positions
   if (status === 'closed') {
+    // 1. Premium component (always present for options)
     const premiumCollected = position.premium * position.contracts * 100
     const premiumPaid = (position.premiumPaidToClose || 0) * position.contracts * 100
     const fees = (position.openFees || 0) + (position.closeFees || 0)
-    realizedPL = premiumCollected - premiumPaid - fees
+    premiumRealizedPL = premiumCollected - premiumPaid - fees
+
+    // 2. Stock component (only if stock was bought and sold)
+    if (position.stockSalePrice && position.stockCostBasis && position.stockQuantity) {
+      const stockGain = (position.stockSalePrice - position.stockCostBasis) * position.stockQuantity
+      stockRealizedPL = stockGain
+    } else {
+      stockRealizedPL = 0
+    }
+
+    // 3. Total Realized P/L = Premium + Stock
+    realizedPL = premiumRealizedPL + stockRealizedPL
+  } else if (status === 'assigned') {
+    // For assigned positions (e.g., put assignment), premium is realized but stock is not yet sold
+    const premiumCollected = position.premium * position.contracts * 100
+    const fees = (position.openFees || 0)
+    premiumRealizedPL = premiumCollected - fees
+    stockRealizedPL = 0 // Stock not sold yet
+    realizedPL = premiumRealizedPL // Only premium is realized
   }
 
-  return { status, realizedPL }
+  return { status, realizedPL, premiumRealizedPL, stockRealizedPL }
 }
 
 // PATCH /api/positions/[id] - Update position
@@ -62,6 +83,20 @@ export async function PATCH(
           : updateData.closeDate
     }
 
+    if (updateData.stockAcquisitionDate) {
+      updateData.stockAcquisitionDate =
+        typeof updateData.stockAcquisitionDate === 'string'
+          ? new Date(updateData.stockAcquisitionDate)
+          : updateData.stockAcquisitionDate
+    }
+
+    if (updateData.stockSaleDate) {
+      updateData.stockSaleDate =
+        typeof updateData.stockSaleDate === 'string'
+          ? new Date(updateData.stockSaleDate)
+          : updateData.stockSaleDate
+    }
+
     // Get existing position to merge data for calculations
     const existingPosition = await prisma.optionPosition.findUnique({
       where: { id },
@@ -92,6 +127,8 @@ export async function PATCH(
         ...updateData,
         status: metrics.status,
         realizedPL: metrics.realizedPL,
+        premiumRealizedPL: metrics.premiumRealizedPL,
+        stockRealizedPL: metrics.stockRealizedPL,
       },
     })
 

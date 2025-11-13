@@ -29,8 +29,12 @@ model OptionPosition {
   premium      Float
 
   // Stock ownership tracking
-  ownsStock      Boolean @default(false) // True if you own the underlying stock
-  stockCostBasis Float?  // Cost basis per share if you own the stock
+  ownsStock            Boolean   @default(false) // True if you own the underlying stock
+  stockCostBasis       Float?    // Cost basis per share if you own the stock
+  stockQuantity        Int?      // Number of shares owned (typically contracts × 100)
+  stockAcquisitionDate DateTime? // When stock was acquired via assignment
+  stockSalePrice       Float?    // Price per share when stock was called away
+  stockSaleDate        DateTime? // When stock was sold (called away)
 
   // Status and assignment
   assigned Boolean @default(false)
@@ -44,8 +48,10 @@ model OptionPosition {
   notes              String?
 
   // Calculated fields (stored for performance)
-  realizedPL   Float? // Calculated when position is closed
-  unrealizedPL Float? // Calculated for open positions with current price
+  realizedPL        Float? // Total P/L: Premium + Stock components
+  premiumRealizedPL Float? // Premium component of realized P/L
+  stockRealizedPL   Float? // Stock component of realized P/L
+  unrealizedPL      Float? // Calculated for open positions with current price
 
   @@index([stockTicker])
   @@index([status])
