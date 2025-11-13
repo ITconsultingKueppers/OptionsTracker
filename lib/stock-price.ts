@@ -1,4 +1,7 @@
-import yahooFinance from 'yahoo-finance2'
+import YahooFinance from 'yahoo-finance2'
+
+// Initialize Yahoo Finance instance
+const yahooFinance = new YahooFinance()
 
 // In-memory cache for stock prices
 interface PriceCache {

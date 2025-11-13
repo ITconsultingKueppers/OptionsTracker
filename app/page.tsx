@@ -16,6 +16,16 @@ import { FileText, MessageSquare, Coffee, ChevronDown, Trash2, Pencil, LayoutGri
 import { toast } from "sonner"
 import { createOptionPositionFormSchema, type CreateOptionPositionFormData } from "@/lib/validations"
 import { OptionPosition, PortfolioMetrics, WheelCycleSummary } from "@/types/option"
+
+interface StockHolding {
+  ticker: string
+  quantity: number
+  costBasis: number
+  totalCostBasis: number
+  currentPrice: number | null
+  currentValue: number | null
+  unrealizedPL: number | null
+}
 import {
   Form,
   FormControl,
@@ -30,6 +40,7 @@ export default function OptionsTracker() {
   const [positions, setPositions] = useState<OptionPosition[]>([])
   const [metrics, setMetrics] = useState<PortfolioMetrics | null>(null)
   const [wheelCycles, setWheelCycles] = useState<WheelCycleSummary[]>([])
+  const [stockHoldings, setStockHoldings] = useState<StockHolding[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
 
@@ -80,10 +91,11 @@ export default function OptionsTracker() {
       if (typeFilter !== 'all') params.append('type', typeFilter)
       if (statusFilter !== 'all') params.append('status', statusFilter)
 
-      const [positionsRes, metricsRes, wheelCyclesRes] = await Promise.all([
+      const [positionsRes, metricsRes, wheelCyclesRes, holdingsRes] = await Promise.all([
         fetch(`/api/positions?${params.toString()}`),
         fetch('/api/metrics'),
         fetch('/api/wheel-cycles'),
+        fetch('/api/stock-holdings'),
       ])
 
       if (positionsRes.ok) {
@@ -99,6 +111,11 @@ export default function OptionsTracker() {
       if (wheelCyclesRes.ok) {
         const wheelCyclesData = await wheelCyclesRes.json()
         setWheelCycles(wheelCyclesData)
+      }
+
+      if (holdingsRes.ok) {
+        const holdingsData = await holdingsRes.json()
+        setStockHoldings(holdingsData)
       }
     } catch (error) {
       console.error('Error fetching data:', error)
@@ -328,15 +345,57 @@ export default function OptionsTracker() {
               </CardContent>
             </Card>
 
-            <Card className="bg-card border-2 border-primary/20">
+            <Card className="bg-card border-2 border-primary/20 col-span-full">
               <CardHeader className="pb-2">
-                <CardDescription className="text-muted-foreground text-xs">Capital Allocated</CardDescription>
+                <div className="flex items-center justify-between">
+                  <CardDescription className="text-muted-foreground text-xs">Capital Allocated</CardDescription>
+                  <div className="text-2xl font-bold text-foreground">
+                    {loading ? '...' : formatCurrency(metrics?.totalCapitalAllocated || 0)}
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-foreground">
-                  {loading ? '...' : formatCurrency(metrics?.totalCapitalAllocated || 0)}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">At risk</p>
+                {stockHoldings.length > 0 ? (
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Stock</TableHead>
+                          <TableHead className="text-right">Quantity</TableHead>
+                          <TableHead className="text-right">Buy-In</TableHead>
+                          <TableHead className="text-right">Total Cost</TableHead>
+                          <TableHead className="text-right">Current Price</TableHead>
+                          <TableHead className="text-right">Current Value</TableHead>
+                          <TableHead className="text-right">Unrealized P/L</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {stockHoldings.map((holding) => (
+                          <TableRow key={holding.ticker}>
+                            <TableCell className="font-medium">{holding.ticker}</TableCell>
+                            <TableCell className="text-right">{holding.quantity}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(holding.costBasis)}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(holding.totalCostBasis)}</TableCell>
+                            <TableCell className="text-right">
+                              {holding.currentPrice ? formatCurrency(holding.currentPrice) : 'Loading...'}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {holding.currentValue ? formatCurrency(holding.currentValue) : 'Loading...'}
+                            </TableCell>
+                            <TableCell className={`text-right font-semibold ${
+                              holding.unrealizedPL && holding.unrealizedPL > 0 ? 'text-green-600' :
+                              holding.unrealizedPL && holding.unrealizedPL < 0 ? 'text-red-600' : ''
+                            }`}>
+                              {holding.unrealizedPL ? formatCurrency(holding.unrealizedPL) : 'Loading...'}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No stock holdings</p>
+                )}
               </CardContent>
             </Card>
           </div>

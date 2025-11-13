@@ -67,6 +67,15 @@ export async function GET(request: NextRequest) {
         // Premium unrealized P/L for open options (premium collected minus open fees)
         const premiumUnrealized = premiumCollected - (position.openFees || 0)
         metrics.premiumUnrealizedPL += premiumUnrealized
+
+        // Stock unrealized P/L for open covered calls (owns stock but option still open)
+        if (position.ownsStock && position.stockCostBasis && position.stockQuantity) {
+          const currentPrice = currentStockPrices.get(position.stockTicker.toUpperCase())
+          if (currentPrice) {
+            const stockUnrealized = (currentPrice - position.stockCostBasis) * position.stockQuantity
+            metrics.stockUnrealizedPL += stockUnrealized
+          }
+        }
       } else if (position.status === 'assigned') {
         // Assigned positions - premium was collected but stock was assigned
         metrics.closedPremiumCollected += premiumCollected
@@ -96,10 +105,11 @@ export async function GET(request: NextRequest) {
           const capitalRequired = position.strike * position.contracts * 100
           metrics.totalCapitalAllocated += capitalRequired
         } else if (position.type === 'call' && position.ownsStock) {
-          // For covered calls: your stock value
-          const stockValue = position.ownsStock && position.stockCostBasis
-            ? position.stockCostBasis * position.contracts * 100
-            : position.strike * position.contracts * 100
+          // For covered calls: current market value of the stock (capital at risk)
+          const currentPrice = currentStockPrices.get(position.stockTicker.toUpperCase())
+          const stockValue = currentPrice
+            ? currentPrice * position.contracts * 100
+            : (position.stockCostBasis || position.strike) * position.contracts * 100
           metrics.totalCapitalAllocated += stockValue
         }
         // Note: naked calls have theoretically unlimited risk, so we don't add to capital allocated

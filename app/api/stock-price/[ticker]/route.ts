@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import yahooFinance from 'yahoo-finance2'
+import YahooFinance from 'yahoo-finance2'
+
+// Initialize Yahoo Finance instance
+const yahooFinance = new YahooFinance()
 
 // Simple in-memory cache for stock prices
 interface PriceCache {

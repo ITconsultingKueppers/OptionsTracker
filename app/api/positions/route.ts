@@ -70,9 +70,15 @@ export async function POST(request: NextRequest) {
         : validatedData.closeDate
       : null
 
+    // Auto-calculate stock quantity if ownsStock but no quantity provided
+    const stockQuantity = validatedData.ownsStock && !validatedData.stockQuantity
+      ? validatedData.contracts * 100
+      : validatedData.stockQuantity || null
+
     // Calculate metrics
     const metrics = calculatePositionMetrics({
       ...validatedData,
+      stockQuantity,
       closeDate,
     })
 
@@ -93,7 +99,7 @@ export async function POST(request: NextRequest) {
         premium: validatedData.premium,
         ownsStock: validatedData.ownsStock,
         stockCostBasis: validatedData.stockCostBasis || null,
-        stockQuantity: validatedData.stockQuantity || null,
+        stockQuantity,
         stockAcquisitionDate: validatedData.stockAcquisitionDate
           ? (typeof validatedData.stockAcquisitionDate === 'string'
               ? new Date(validatedData.stockAcquisitionDate)
