@@ -1,0 +1,53 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model OptionPosition {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Wheel cycle tracking
+  wheelCycleName        String?
+  continueExistingWheel Boolean  @default(false)
+
+  // Position details - Required fields
+  openDate     DateTime
+  stockTicker  String
+  expiration   DateTime
+  type         String   // "put" or "call"
+  contracts    Int
+  strike       Float
+  premium      Float
+
+  // Stock ownership tracking
+  ownsStock      Boolean @default(false) // True if you own the underlying stock
+  stockCostBasis Float?  // Cost basis per share if you own the stock
+
+  // Status and assignment
+  assigned Boolean @default(false)
+  status   String  @default("open") // "open" | "closed" | "assigned"
+
+  // Optional closing details
+  openFees           Float?
+  closeDate          DateTime?
+  premiumPaidToClose Float?
+  closeFees          Float?
+  notes              String?
+
+  // Calculated fields (stored for performance)
+  realizedPL   Float? // Calculated when position is closed
+  unrealizedPL Float? // Calculated for open positions with current price
+
+  @@index([stockTicker])
+  @@index([status])
+  @@index([wheelCycleName])
+}
