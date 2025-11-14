@@ -105,7 +105,6 @@ export default function PositionsPage() {
 
   const openPositions = positions.filter((p) => p.status === 'open')
   const closedPositions = positions.filter((p) => p.status === 'closed')
-  const assignedPositions = positions.filter((p) => p.status === 'assigned')
 
   return (
     <>
@@ -187,7 +186,6 @@ export default function PositionsPage() {
             <TabsList>
               <TabsTrigger value="open">Open ({openPositions.length})</TabsTrigger>
               <TabsTrigger value="closed">Closed ({closedPositions.length})</TabsTrigger>
-              <TabsTrigger value="assigned">Assigned ({assignedPositions.length})</TabsTrigger>
             </TabsList>
 
             <TabsContent value="open">
@@ -350,6 +348,58 @@ export default function PositionsPage() {
                     No closed positions found
                   </CardContent>
                 </Card>
+              ) : viewMode === 'cards' ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {closedPositions.map((position) => (
+                    <Card key={position.id}>
+                      <CardHeader>
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <CardTitle className="text-lg">
+                              {position.stockTicker} ${position.strike}
+                            </CardTitle>
+                            <CardDescription>
+                              {position.type === 'put' ? 'Put' : 'Call'} • {formatDate(position.openDate)}
+                            </CardDescription>
+                          </div>
+                          <Badge variant="secondary">Closed</Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div>
+                            <p className="text-muted-foreground">Premium</p>
+                            <p className="font-semibold">{formatCurrency(position.premium)}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Realized P/L</p>
+                            <p
+                              className={`font-semibold ${
+                                position.realizedPL && position.realizedPL > 0
+                                  ? 'text-green-600'
+                                  : position.realizedPL && position.realizedPL < 0
+                                  ? 'text-red-600'
+                                  : ''
+                              }`}
+                            >
+                              {formatCurrency(position.realizedPL)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Close Date</p>
+                            <p className="font-semibold text-xs">
+                              {position.closeDate ? formatDate(position.closeDate) : 'N/A'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Contracts</p>
+                            <p className="font-semibold">{position.contracts}</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
               ) : (
                 <Card>
                   <Table>
@@ -386,47 +436,6 @@ export default function PositionsPage() {
                           >
                             {formatCurrency(position.realizedPL)}
                           </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </Card>
-              )}
-            </TabsContent>
-
-            <TabsContent value="assigned">
-              {assignedPositions.length === 0 ? (
-                <Card>
-                  <CardContent className="py-8 text-center text-muted-foreground">
-                    No assigned positions found
-                  </CardContent>
-                </Card>
-              ) : (
-                <Card>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Ticker</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Strike</TableHead>
-                        <TableHead>Assignment Date</TableHead>
-                        <TableHead>Contracts</TableHead>
-                        <TableHead>Premium</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {assignedPositions.map((position) => (
-                        <TableRow key={position.id}>
-                          <TableCell className="font-medium">{position.stockTicker}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline">{position.type === 'put' ? 'Put' : 'Call'}</Badge>
-                          </TableCell>
-                          <TableCell>${position.strike}</TableCell>
-                          <TableCell>
-                            {position.assignmentDate ? formatDate(position.assignmentDate) : 'N/A'}
-                          </TableCell>
-                          <TableCell>{position.contracts}</TableCell>
-                          <TableCell>{formatCurrency(position.premium)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { LayoutDashboard, List, TrendingUp, RefreshCw, Plus, LogOut } from 'lucide-react'
+import { LayoutDashboard, List, TrendingUp, Plus, LogOut } from 'lucide-react'
 
 interface AppHeaderProps {
   onNewPosition?: () => void
@@ -25,11 +25,6 @@ const navItems = [
     label: 'Analytics',
     href: '/analytics',
     icon: TrendingUp,
-  },
-  {
-    label: 'Cycles',
-    href: '/cycles',
-    icon: RefreshCw,
   },
 ]
 
