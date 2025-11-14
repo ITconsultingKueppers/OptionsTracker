@@ -193,6 +193,10 @@ export default function OptionsTracker() {
       premium: position.premium.toString(),
       ownsStock: position.ownsStock ? "yes" : "no",
       stockCostBasis: position.stockCostBasis?.toString() || "",
+      stockQuantity: position.stockQuantity?.toString() || "",
+      stockAcquisitionDate: position.stockAcquisitionDate ? new Date(position.stockAcquisitionDate).toISOString().split('T')[0] : "",
+      stockSalePrice: position.stockSalePrice?.toString() || "",
+      stockSaleDate: position.stockSaleDate ? new Date(position.stockSaleDate).toISOString().split('T')[0] : "",
       assigned: position.assigned ? "yes" : "no",
       openFees: position.openFees?.toString() || "",
       closeDate: position.closeDate ? new Date(position.closeDate).toISOString().split('T')[0] : "",
@@ -649,7 +653,14 @@ export default function OptionsTracker() {
                         <FormItem>
                           <FormLabel>Stock Quantity</FormLabel>
                           <FormControl>
-                            <Input type="number" step="1" placeholder="0" className="bg-card" {...field} />
+                            <Input
+                              type="number"
+                              step="1"
+                              placeholder="0"
+                              className="bg-card"
+                              {...field}
+                              value={field.value || ""}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -1430,7 +1441,14 @@ export default function OptionsTracker() {
                         <FormItem>
                           <FormLabel>Stock Quantity</FormLabel>
                           <FormControl>
-                            <Input type="number" step="1" placeholder="0" className="bg-card" {...field} />
+                            <Input
+                              type="number"
+                              step="1"
+                              placeholder="0"
+                              className="bg-card"
+                              {...field}
+                              value={field.value || ""}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

@@ -97,6 +97,11 @@ export async function PATCH(
           : updateData.stockSaleDate
     }
 
+    // Convert empty strings to null for optional date fields
+    if (updateData.closeDate === '') updateData.closeDate = null
+    if (updateData.stockAcquisitionDate === '') updateData.stockAcquisitionDate = null
+    if (updateData.stockSaleDate === '') updateData.stockSaleDate = null
+
     // Get existing position to merge data for calculations
     const existingPosition = await prisma.optionPosition.findUnique({
       where: { id },
@@ -117,14 +122,26 @@ export async function PATCH(
       ...updateData,
     }
 
+    // Auto-calculate stock quantity if ownsStock but no quantity provided
+    const stockQuantity = (mergedData.ownsStock && !mergedData.stockQuantity)
+      ? mergedData.contracts * 100
+      : mergedData.stockQuantity || null
+
+    // Update merged data with calculated quantity
+    const mergedDataWithQuantity = {
+      ...mergedData,
+      stockQuantity
+    }
+
     // Calculate metrics
-    const metrics = calculatePositionMetrics(mergedData)
+    const metrics = calculatePositionMetrics(mergedDataWithQuantity)
 
     // Update position
     const position = await prisma.optionPosition.update({
       where: { id },
       data: {
         ...updateData,
+        stockQuantity,
         status: metrics.status,
         realizedPL: metrics.realizedPL,
         premiumRealizedPL: metrics.premiumRealizedPL,
