@@ -23,6 +23,7 @@ import { AlertsDashboard } from "@/components/alerts-dashboard"
 import { StrategyDetails } from "@/components/strategy-details"
 import { StrategySelector } from "@/components/strategy-selector"
 import { Badge } from "@/components/ui/badge"
+import { AppHeader } from "@/components/app-header"
 
 interface StockHolding {
   ticker: string
@@ -50,11 +51,6 @@ export default function OptionsTracker() {
   const [stockHoldings, setStockHoldings] = useState<StockHolding[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
-
-  // Filter states
-  const [stockFilter, setStockFilter] = useState("")
-  const [typeFilter, setTypeFilter] = useState("all")
-  const [statusFilter, setStatusFilter] = useState("all")
 
   // Edit dialog state
   const [editingPosition, setEditingPosition] = useState<OptionPosition | null>(null)
@@ -106,14 +102,8 @@ export default function OptionsTracker() {
     try {
       setLoading(true)
 
-      // Build query params for filters
-      const params = new URLSearchParams()
-      if (stockFilter) params.append('stockSymbol', stockFilter)
-      if (typeFilter !== 'all') params.append('type', typeFilter)
-      if (statusFilter !== 'all') params.append('status', statusFilter)
-
       const [positionsRes, metricsRes, wheelCyclesRes, holdingsRes] = await Promise.all([
-        fetch(`/api/positions?${params.toString()}`),
+        fetch('/api/positions'),
         fetch('/api/metrics'),
         fetch('/api/wheel-cycles'),
         fetch('/api/stock-holdings'),
@@ -173,10 +163,10 @@ export default function OptionsTracker() {
     }
   }
 
-  // Fetch data on mount and when filters change
+  // Fetch data on mount
   useEffect(() => {
     fetchData()
-  }, [stockFilter, typeFilter, statusFilter])
+  }, [])
 
   // Handle form submission
   const onSubmit = async (data: CreateOptionPositionFormData) => {
@@ -305,40 +295,18 @@ export default function OptionsTracker() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-sm">WT</span>
-            </div>
-            <h1 className="text-xl font-semibold text-foreground">WheelTracker</h1>
-          </div>
+    <>
+      <AppHeader />
 
-          <div className="flex items-center gap-2">
-            <Button
-              onClick={() => document.getElementById('new-position-form')?.scrollIntoView({ behavior: 'smooth' })}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground"
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              New Position
-            </Button>
-            <Button variant="outline" size="icon">
-              <MessageSquare className="w-4 h-4" />
-            </Button>
-            <Button variant="outline" className="bg-yellow-400 hover:bg-yellow-500 text-black border-yellow-400">
-              <Coffee className="w-4 h-4 mr-2" />
-              Coffee
-            </Button>
-            <Button variant="ghost" size="sm" className="text-muted-foreground">
-              Logout
-            </Button>
+      <main className="container mx-auto px-4 py-8 flex-1">
+        {/* Strategy Selector */}
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold mb-1">Dashboard</h1>
+            <p className="text-muted-foreground text-sm">Monitor your options trading performance</p>
           </div>
+          <StrategySelector strategyConfig={strategyConfig} onUpdate={updateStrategyConfig} />
         </div>
-      </header>
-
-      <main className="container mx-auto px-4 py-8">
         {/* Portfolio Summary */}
         <section className="mb-8">
           <h2 className="text-2xl font-semibold mb-4 text-foreground">Portfolio Summary</h2>
@@ -492,62 +460,6 @@ export default function OptionsTracker() {
               </CardContent>
             )}
           </Card>
-        </section>
-
-        {/* Filters and Strategy */}
-        <section className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-foreground">Filters & Strategy</h3>
-            <StrategySelector
-              strategyConfig={strategyConfig}
-              onUpdate={updateStrategyConfig}
-            />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor="stock-filter" className="text-sm text-muted-foreground mb-2 block">
-                Stock Symbol
-              </Label>
-              <Input
-                id="stock-filter"
-                placeholder="Filter by stock..."
-                className="bg-card"
-                value={stockFilter}
-                onChange={(e) => setStockFilter(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="type-filter" className="text-sm text-muted-foreground mb-2 block">
-                Type
-              </Label>
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger id="type-filter" className="bg-card">
-                  <SelectValue placeholder="All" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="put">Put</SelectItem>
-                  <SelectItem value="call">Call</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="status-filter" className="text-sm text-muted-foreground mb-2 block">
-                Status
-              </Label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger id="status-filter" className="bg-card">
-                  <SelectValue placeholder="All" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="open">Open</SelectItem>
-                  <SelectItem value="closed">Closed</SelectItem>
-                  <SelectItem value="assigned">Assigned</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
         </section>
 
         {/* New Position Form */}
@@ -1679,6 +1591,6 @@ export default function OptionsTracker() {
           </Form>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   )
 }
