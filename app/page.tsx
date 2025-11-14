@@ -1,5 +1,6 @@
 "use client"
 
+// Options Trading Tracker with Strategy Alerts
 import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -16,6 +17,12 @@ import { FileText, MessageSquare, Coffee, ChevronDown, Trash2, Pencil, LayoutGri
 import { toast } from "sonner"
 import { createOptionPositionFormSchema, type CreateOptionPositionFormData } from "@/lib/validations"
 import { OptionPosition, PortfolioMetrics, WheelCycleSummary } from "@/types/option"
+import { useStrategyAlerts } from "@/hooks/use-strategy-alerts"
+import { getStrategyConfig } from "@/lib/strategies"
+import { AlertsDashboard } from "@/components/alerts-dashboard"
+import { StrategyDetails } from "@/components/strategy-details"
+import { StrategySelector } from "@/components/strategy-selector"
+import { Badge } from "@/components/ui/badge"
 
 interface StockHolding {
   ticker: string
@@ -55,6 +62,20 @@ export default function OptionsTracker() {
 
   // View mode state
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
+
+  // Stock prices for strategy calculations
+  const [stockPrices, setStockPrices] = useState<Map<string, number>>(new Map())
+
+  // Strategy alerts hook
+  const {
+    strategyConfig,
+    updateStrategyConfig,
+    allAlerts,
+    activeAlerts,
+    dismissAlert,
+    undismissAlert,
+    clearAllDismissed,
+  } = useStrategyAlerts(positions, stockPrices)
 
   // Initialize form with react-hook-form and zod validation
   const form = useForm<CreateOptionPositionFormData>({
@@ -98,8 +119,9 @@ export default function OptionsTracker() {
         fetch('/api/stock-holdings'),
       ])
 
+      let positionsData: OptionPosition[] = []
       if (positionsRes.ok) {
-        const positionsData = await positionsRes.json()
+        positionsData = await positionsRes.json()
         setPositions(positionsData)
       }
 
@@ -116,6 +138,32 @@ export default function OptionsTracker() {
       if (holdingsRes.ok) {
         const holdingsData = await holdingsRes.json()
         setStockHoldings(holdingsData)
+      }
+
+      // Fetch stock prices for open positions (for strategy alerts)
+      if (positionsData.length > 0) {
+        const openPositions = positionsData.filter((p: OptionPosition) => p.status === 'open')
+        if (openPositions.length > 0) {
+          const tickers = [...new Set(openPositions.map((p: OptionPosition) => p.stockTicker))]
+          const prices = new Map<string, number>()
+
+          // Fetch prices in parallel
+          await Promise.all(
+            tickers.map(async (ticker) => {
+              try {
+                const res = await fetch(`/api/stock-price/${ticker}`)
+                if (res.ok) {
+                  const data = await res.json()
+                  prices.set(ticker.toUpperCase(), data.price)
+                }
+              } catch (err) {
+                console.error(`Error fetching price for ${ticker}:`, err)
+              }
+            })
+          )
+
+          setStockPrices(prices)
+        }
       }
     } catch (error) {
       console.error('Error fetching data:', error)
@@ -405,6 +453,22 @@ export default function OptionsTracker() {
           </div>
         </section>
 
+        {/* Strategy Alerts Dashboard */}
+        {activeAlerts.length > 0 && (
+          <section className="mb-8">
+            <AlertsDashboard
+              alerts={activeAlerts}
+              onDismiss={dismissAlert}
+              onViewPosition={(positionId) => {
+                const position = positions.find(p => p.id === positionId)
+                if (position) {
+                  handleEdit(position)
+                }
+              }}
+            />
+          </section>
+        )}
+
         {/* Return on Investment */}
         <section className="mb-8">
           <Card>
@@ -430,9 +494,15 @@ export default function OptionsTracker() {
           </Card>
         </section>
 
-        {/* Filters */}
+        {/* Filters and Strategy */}
         <section className="mb-8">
-          <h3 className="text-lg font-semibold mb-4 text-foreground">Filters</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-foreground">Filters & Strategy</h3>
+            <StrategySelector
+              strategyConfig={strategyConfig}
+              onUpdate={updateStrategyConfig}
+            />
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label htmlFor="stock-filter" className="text-sm text-muted-foreground mb-2 block">
@@ -882,9 +952,18 @@ export default function OptionsTracker() {
                       </div>
                     ) : viewMode === 'cards' ? (
                       <div className="space-y-4">
-                        {positions.filter(p => p.status === 'open' || p.status === 'assigned').map((position) => (
-                          <Card key={position.id} className="border-2">
-                            <CardContent className="pt-6">
+                        {positions.filter(p => p.status === 'open' || p.status === 'assigned').map((position) => {
+                          const positionAlerts = allAlerts.filter((alert) => alert.positionId === position.id)
+                          const currentPrice = stockPrices.get(position.stockTicker.toUpperCase())
+                          const currentConfig = getStrategyConfig(
+                            strategyConfig.activeStrategy,
+                            strategyConfig.customRollThreshold,
+                            strategyConfig.customCloseThreshold
+                          )
+
+                          return (
+                            <Card key={position.id} className="border-2">
+                              <CardContent className="pt-6">
                               <div className="flex items-start justify-between">
                                 <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                   <div>
@@ -904,12 +983,20 @@ export default function OptionsTracker() {
                                   </div>
                                   <div>
                                     <p className="text-xs text-muted-foreground">Status</p>
-                                    <p className={`font-semibold capitalize inline-block px-2 py-1 rounded text-xs ${
-                                      position.status === 'open' ? 'bg-blue-500/10 text-blue-500' :
-                                      'bg-orange-500/10 text-orange-500'
-                                    }`}>
-                                      {position.status}
-                                    </p>
+                                    <div className="flex items-center gap-2">
+                                      <p className={`font-semibold capitalize inline-block px-2 py-1 rounded text-xs ${
+                                        position.status === 'open' ? 'bg-blue-500/10 text-blue-500' :
+                                        'bg-orange-500/10 text-orange-500'
+                                      }`}>
+                                        {position.status}
+                                      </p>
+                                      {positionAlerts.length > 0 && (
+                                        <Badge variant={positionAlerts[0].urgency === 'high' ? 'destructive' : 'secondary'} className="text-xs">
+                                          {positionAlerts[0].type === 'roll' ? '🔄 Roll' :
+                                           positionAlerts[0].type === 'close' ? '✅ Close' : '⚠️'}
+                                        </Badge>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                                 <div className="flex gap-2 ml-4">
@@ -944,9 +1031,17 @@ export default function OptionsTracker() {
                                   </span>
                                 </div>
                               )}
+                              {/* Strategy Details */}
+                              <StrategyDetails
+                                position={position}
+                                currentStockPrice={currentPrice || null}
+                                strategyConfig={currentConfig}
+                                alerts={positionAlerts}
+                              />
                             </CardContent>
                           </Card>
-                        ))}
+                          )
+                        })}
                       </div>
                     ) : (
                       <div className="rounded-md border">
@@ -1017,9 +1112,18 @@ export default function OptionsTracker() {
                       </div>
                     ) : viewMode === 'cards' ? (
                       <div className="space-y-4">
-                        {positions.filter(p => p.status === 'closed').map((position) => (
-                          <Card key={position.id} className="border-2">
-                            <CardContent className="pt-6">
+                        {positions.filter(p => p.status === 'closed').map((position) => {
+                          const positionAlerts = allAlerts.filter((alert) => alert.positionId === position.id)
+                          const currentPrice = stockPrices.get(position.stockTicker.toUpperCase())
+                          const currentConfig = getStrategyConfig(
+                            strategyConfig.activeStrategy,
+                            strategyConfig.customRollThreshold,
+                            strategyConfig.customCloseThreshold
+                          )
+
+                          return (
+                            <Card key={position.id} className="border-2">
+                              <CardContent className="pt-6">
                               <div className="flex items-start justify-between">
                                 <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                   <div>
@@ -1080,9 +1184,17 @@ export default function OptionsTracker() {
                                   </span>
                                 </div>
                               )}
+                              {/* Strategy Details */}
+                              <StrategyDetails
+                                position={position}
+                                currentStockPrice={currentPrice || null}
+                                strategyConfig={currentConfig}
+                                alerts={positionAlerts}
+                              />
                             </CardContent>
                           </Card>
-                        ))}
+                          )
+                        })}
                       </div>
                     ) : (
                       <div className="rounded-md border">
